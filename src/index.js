@@ -6,6 +6,7 @@ import joi from 'joi';
 import chalk from 'chalk';
 import dayjs from 'dayjs';
 import bcrypt from 'bcrypt';
+import { v4 as uuid } from "uuid";
 
 dotenv.config();
 
@@ -54,6 +55,30 @@ app.post("/sign-up", async (req, res) => {
         })
 
         res.sendStatus(201);
+    } catch (error) {
+        console.error(error);
+        res.send(500);
+    }
+})
+
+app.post("/sign-in", async (req, res) => {
+    const {email, senha} = req.body;
+
+    try {
+        const user = await db.collection("usuarios").findOne({email: email});
+        if (user && bcrypt.compareSync(senha, user.senha)) {
+            const token = uuid();
+
+            await db.collection("sessoes").insertOne({
+                userId: user._id,
+                token: token
+            })
+
+            res.status(200).send(token)
+
+        } else {
+            return res.status(400).send("Usuário ou senha inválido")
+        }
     } catch (error) {
         console.error(error);
         res.send(500);
