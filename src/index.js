@@ -118,7 +118,7 @@ app.get("/registros", async (req, res) => {
 
         const user = await db.collection("usuarios").findOne({_id: session.userId});
 
-        const registros = await db.collection("registros").find({userId: session.userId}).toArray();
+        const registros = await db.collection("registros").find({userId: user._id}).toArray();
 
         res.send(registros);
         
@@ -133,7 +133,7 @@ app.post("/entrada", async (req, res) => {
     const {valor, descricao} = req.body;
 
     if (!token) {
-        return res.send(401);
+        return res.sendStatus(401);
     }
 
     const validation = registroSchema.validate({valor, descricao}, {abortEarly: false})
@@ -145,7 +145,7 @@ app.post("/entrada", async (req, res) => {
     try {
         const session = await db.collection("sessoes").findOne({token: token})
         if (!session) {
-            return res.send(401);
+            return res.sendStatus(401);
         }
 
         await db.collection("registros").insertOne({
@@ -160,6 +160,38 @@ app.post("/entrada", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send("Erro ao cadastrar uma entrada");
+    }
+
+})
+
+app.post("/saida", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const { valor, descricao } = req.body;
+
+    const validation = registroSchema.validate({valor, descricao}, {abortEarly: false})
+    if (validation.error) {
+        const erros = validation.error.details.map(detail => detail.message);
+        return res.status(422).send(erros);
+    }
+
+    try {
+        const session = await db.collection("sessoes").findOne({token: token});
+        if (!session) {
+            return res.sendStatus(401);
+        }
+
+        await db.collection("registros").insertOne({
+            userId: session.userId,
+            valor: valor,
+            descricao: descricao,
+            data: dayjs().format("DD/MM"),
+            type: "saida"
+        })
+
+        return res.sendStatus(201);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send("Erro ao registrar uma saída");
     }
 
 })
