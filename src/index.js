@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { response } from 'express';
 import cors from "cors";
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from "dotenv";
@@ -27,6 +27,11 @@ const userSchema = joi.object({
     nome: joi.string().min(1).required(),
     email: joi.string().email().required(),
     senha: joi.string().min(1).required()
+})
+
+const registroSchema = joi.object({
+    valor: joi.string().min(1).required(),
+    descricao: joi.string().min(1).required()
 })
  
 //rotas login
@@ -74,7 +79,10 @@ app.post("/sign-in", async (req, res) => {
                 token: token
             })
 
-            res.status(200).send(token)
+            res.status(200).send({
+                nome: user.nome,
+                token: token
+            })
 
         } else {
             return res.status(400).send("Usuário ou senha inválido")
@@ -84,6 +92,7 @@ app.post("/sign-in", async (req, res) => {
         res.send(500);
     }
 })
+
 app.get("/users", async (req, res) => {
     try {
         const users = await db.collection("usuarios").find().toArray();
@@ -92,6 +101,67 @@ app.get("/users", async (req, res) => {
         console.error(error);
         res.send(500)
     }
+})
+
+app.get("/registros", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+
+    if (!token) {
+        return res.sendStatus(401);
+    }
+
+    try {   
+        const session = await db.collection("sessoes").findOne({token: token});
+        if (!session) {
+            return res.sendStatus(401);
+        }
+
+        const user = await db.collection("usuarios").findOne({_id: session.userId});
+
+        const registros = await db.collection("registros").find({userId: session.userId}).toArray();
+
+        res.send(registros);
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Não foi possível buscar os registros")
+    }
+})
+
+app.post("/entrada", async (req, res) => {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    const {valor, descricao} = req.body;
+
+    if (!token) {
+        return res.send(401);
+    }
+
+    const validation = registroSchema.validate({valor, descricao}, {abortEarly: false})
+    if (validation.error) {
+        const erros = validation.error.details.map(detail => detail.message);
+        return res.status(422).send(erros);
+    }
+
+    try {
+        const session = await db.collection("sessoes").findOne({token: token})
+        if (!session) {
+            return res.send(401);
+        }
+
+        await db.collection("registros").insertOne({
+            userId: session.userId,
+            valor: valor,
+            descricao: descricao,
+            data: dayjs().format("DD/MM"),
+            type: "entrada"
+        })
+
+        res.sendStatus(201);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Erro ao cadastrar uma entrada");
+    }
+
 })
 
 
