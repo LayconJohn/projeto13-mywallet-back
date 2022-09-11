@@ -1,9 +1,12 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuid } from "uuid";
-import db from "../database/mongoDB.js";
+
+import {mongo} from "../database/mongoDB.js";
+
+let db = await mongo()
 
 const cadastrarUser = async (req, res) => {
-    const {nome, email, senha} = req.body;
+    const {nome, email, senha} = res.locals.userCadastro;
 
     const senhaCriptografada = bcrypt.hashSync(senha, 10);
 
@@ -22,12 +25,12 @@ const cadastrarUser = async (req, res) => {
         res.sendStatus(201);
     } catch (error) {
         console.error(error);
-        res.send(500);
+        res.sendStatus(500);
     }
 }
 
 const logarUser = async (req, res) => {
-    const {email, senha} = req.body;
+    const {email, senha} = res.locals.body;
 
     try {
         const user = await db.collection("usuarios").findOne({email: email});
@@ -49,7 +52,7 @@ const logarUser = async (req, res) => {
         }
     } catch (error) {
         console.error(error);
-        res.send(500);
+        res.sendStatus(500);
     }
 }
 

@@ -1,6 +1,8 @@
 import { registroSchema } from "../schema/registroSchema.js";
 
-import db from "../database/mongoDB.js";
+import {mongo} from "../database/mongoDB.js";
+
+let db = await mongo()
 
 function validarSchemaRegistro(req, res, next) {
     const {valor, descricao} = req.body;

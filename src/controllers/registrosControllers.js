@@ -1,6 +1,8 @@
 import dayjs from 'dayjs';
 
-import db from "../database/mongoDB.js";
+import {mongo} from "../database/mongoDB.js";
+
+let db = await mongo()
 
 
 const pegarRegistros = async (req, res) => {

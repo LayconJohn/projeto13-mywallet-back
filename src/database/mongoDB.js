@@ -1,9 +1,16 @@
 import { MongoClient } from 'mongodb';
-
 const mongoClient = new MongoClient("mongodb://localhost:27017");
-let db;
-mongoClient.connect().then(()=> {
-    db = mongoClient.db("mywallet");
-})
+async function mongo() {
+    let conection;
 
-export default db;
+    try {
+        conection = await mongoClient.db("mywallet");
+        return conection
+        
+    } catch (error) {
+        console.error(error)
+        return error; 
+    }
+}
+
+export {mongo};
